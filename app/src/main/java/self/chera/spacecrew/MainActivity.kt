@@ -68,7 +68,7 @@ fun ComponentActivity.FeatureThatUseBluetooth() {
     if (bluetoothPermissionState.allPermissionsGranted) {
         BluetoothMainScreen()
     } else {
-        Grant(bluetoothPermissionState)
+        AskForBluetooth(bluetoothPermissionState)
     }
 }
 
@@ -108,7 +108,7 @@ fun ComponentActivity.BluetoothMainScreen() {
 }
 
 @Composable
-fun Grant(
+fun AskForBluetooth(
     permissionStates: MultiplePermissionsState
 ) {
     Column(
