@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    FeatureThatUseBluetooth()
+                    FeatureThatUseBluetooth(this)
                 }
             }
         }
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun ComponentActivity.FeatureThatUseBluetooth() {
+fun FeatureThatUseBluetooth(activity: ComponentActivity) {
     val bluetoothPermissionState = rememberMultiplePermissionsState(
         listOf(
             Manifest.permission.BLUETOOTH,
@@ -66,15 +66,15 @@ fun ComponentActivity.FeatureThatUseBluetooth() {
     )
 
     if (bluetoothPermissionState.allPermissionsGranted) {
-        BluetoothMainScreen()
+        BluetoothMainScreen(activity)
     } else {
         AskForBluetooth(bluetoothPermissionState)
     }
 }
 
 @Composable
-fun ComponentActivity.BluetoothMainScreen() {
-    val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+fun BluetoothMainScreen(activity: ComponentActivity) {
+    val manager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     val bluetooth = manager.adapter
 
     var isON by remember { mutableStateOf(bluetooth.isEnabled) }
@@ -101,7 +101,7 @@ fun ComponentActivity.BluetoothMainScreen() {
                 enabled = !bluetooth.isEnabled,
                 onClick = { toggleBT.launch(enableIntent) }
             ) {
-                Text(text = "Turn ON\nBluetooth")
+                Text(text = "Turn ON")
             }
         }
     }
