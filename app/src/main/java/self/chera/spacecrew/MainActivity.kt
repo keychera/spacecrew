@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        println(applicationContext.packageName)
         setContent {
             SpacecrewTheme {
                 Surface(
