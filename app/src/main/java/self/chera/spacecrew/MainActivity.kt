@@ -17,10 +17,13 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -92,25 +95,41 @@ fun BluetoothMainScreen(activity: ComponentActivity) {
         ActivityResultContracts.StartActivityForResult()
     ) { isON = bluetooth.isEnabled }
 
+
+
     Column(
         verticalArrangement = Arrangement.Center,
         modifier = Modifier.fillMaxSize()
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround,
-            modifier = Modifier
-                .height(150.dp)
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(text = "Bluetooth is allowed")
-            Text(text = "Bluetooth is ${if (isON) "ON" else "OFF"}")
-            Button(
-                enabled = !bluetooth.isEnabled,
-                onClick = { toggleBT.launch(enableIntent) }
+            Spacer(Modifier.size(32.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "Turn ON")
+                Text(text = "Bluetooth is ${if (isON) "ON" else "OFF"}")
+                Spacer(Modifier.size(16.dp))
+                if (bluetooth.isEnabled) {
+                    Button(
+                        onClick = { toggleBT.launch(enableIntent) }
+                    ) {
+                        Text(text = "Scan for devices")
+                    }
+                } else {
+                    Button(
+                        onClick = { toggleBT.launch(enableIntent) }
+                    ) {
+                        Text(text = "Turn ON")
+                    }
+                }
+
             }
+            val devices = (1..1).map {
+                Device("device $it")
+            }
+            DeviceList(devices = devices)
         }
     }
 }
@@ -132,7 +151,8 @@ fun AskForBluetooth(
 }
 
 data class Device(
-    val bluetoothId: String
+    val bluetoothId: String,
+    val paired: Boolean = false,
 )
 
 @Composable
@@ -142,7 +162,7 @@ fun DeviceCard(device: Device) {
             .padding(4.dp)
             .shadow(2.dp)
             .padding(16.dp)
-            .fillMaxWidth()
+            .fillMaxWidth(0.8F)
     ) {
         Text(text = device.bluetoothId)
     }
@@ -150,8 +170,19 @@ fun DeviceCard(device: Device) {
 
 @Composable
 fun DeviceList(devices: List<Device>) {
-    LazyColumn {
-        items(devices) { DeviceCard(device = it) }
+    if (devices.isNotEmpty()) {
+        LazyColumn {
+            items(devices) { DeviceCard(device = it) }
+        }
+    } else {
+        Row(
+            Modifier
+                .padding(4.dp)
+                .shadow(2.dp)
+                .padding(16.dp)
+        ) {
+            Text("No device found")
+        }
     }
 }
 
