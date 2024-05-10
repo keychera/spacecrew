@@ -1,12 +1,14 @@
-@file:OptIn(ExperimentalPermissionsApi::class)
+@file:OptIn(ExperimentalPermissionsApi::class, ExperimentalPermissionsApi::class)
 
 package self.chera.spacecrew
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -18,30 +20,31 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
@@ -72,19 +75,50 @@ fun FeatureThatUseBluetooth(activity: ComponentActivity) {
         listOf(
             Manifest.permission.BLUETOOTH,
             Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_CONNECT
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_ADMIN,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.ACCESS_FINE_LOCATION,
         ),
     )
 
+
+
     if (bluetoothPermissionState.allPermissionsGranted) {
-        BluetoothMainScreen(activity)
+
+        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+
+        val btDeviceListViewModel : BluetoothDeviceListViewModel = viewModel()
+        activity.registerReceiver(btDeviceListViewModel.receiver, filter)
+
+        val lifecycleOwner = LocalLifecycleOwner.current
+        val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+
+
+        LaunchedEffect(lifecycleState) {
+            if (lifecycleState == Lifecycle.State.DESTROYED) {
+               activity.unregisterReceiver(btDeviceListViewModel.receiver)
+            }
+        }
+        Column(
+            Modifier.padding(start = 16.dp, end = 16.dp)
+        ) {
+            BluetoothMainScreen(activity, btDeviceListViewModel)
+            DeviceListScreen(btDeviceListViewModel)
+        }
+
     } else {
         AskForBluetooth(bluetoothPermissionState)
     }
 }
 
 @Composable
-fun BluetoothMainScreen(activity: ComponentActivity) {
+fun BluetoothMainScreen(
+    activity: ComponentActivity,
+    btDeviceListViewModel: BluetoothDeviceListViewModel
+) {
     val manager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     val bluetooth = manager.adapter
 
@@ -95,41 +129,29 @@ fun BluetoothMainScreen(activity: ComponentActivity) {
         ActivityResultContracts.StartActivityForResult()
     ) { isON = bluetooth.isEnabled }
 
-
-
     Column(
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize()
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxSize()
+        Spacer(Modifier.size(32.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Spacer(Modifier.size(32.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "Bluetooth is ${if (isON) "ON" else "OFF"}")
-                Spacer(Modifier.size(16.dp))
-                if (bluetooth.isEnabled) {
-                    Button(
-                        onClick = { toggleBT.launch(enableIntent) }
-                    ) {
-                        Text(text = "Scan for devices")
-                    }
-                } else {
-                    Button(
-                        onClick = { toggleBT.launch(enableIntent) }
-                    ) {
-                        Text(text = "Turn ON")
-                    }
+            Text(text = "Bluetooth is ${if (isON) "ON" else "OFF"}")
+            Spacer(Modifier.size(16.dp))
+            if (bluetooth.isEnabled) {
+                Button(
+                    onClick = { btDeviceListViewModel.scanDevices(activity) }
+                ) {
+                    Text(text = "Scan for devices")
                 }
+            } else {
+                Button(
+                    onClick = { toggleBT.launch(enableIntent) }
+                ) {
+                    Text(text = "Turn ON")
+                }
+            }
 
-            }
-            val devices = (1..1).map {
-                Device("device $it")
-            }
-            DeviceList(devices = devices)
         }
     }
 }
@@ -150,13 +172,9 @@ fun AskForBluetooth(
     }
 }
 
-data class Device(
-    val bluetoothId: String,
-    val paired: Boolean = false,
-)
 
 @Composable
-fun DeviceCard(device: Device) {
+fun DeviceCard(device: BluetoothDevice) {
     Row(
         Modifier
             .padding(4.dp)
@@ -164,12 +182,12 @@ fun DeviceCard(device: Device) {
             .padding(16.dp)
             .fillMaxWidth(0.8F)
     ) {
-        Text(text = device.bluetoothId)
+        Text(text = device.address)
     }
 }
 
 @Composable
-fun DeviceList(devices: List<Device>) {
+fun DeviceList(devices: List<BluetoothDevice>) {
     if (devices.isNotEmpty()) {
         LazyColumn {
             items(devices) { DeviceCard(device = it) }
@@ -191,9 +209,6 @@ fun DeviceList(devices: List<Device>) {
 @Composable
 fun Preview() {
     SpacecrewTheme {
-        val devices = (1..10).map {
-            Device("device $it")
-        }
-        DeviceList(devices = devices)
+
     }
 }
