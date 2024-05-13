@@ -116,7 +116,14 @@ fun DeviceListScreen(
 fun DeviceList(devices: List<Device>) {
     if (devices.isNotEmpty()) {
         LazyColumn {
-            items(devices) { DeviceCard(device = it) }
+            items(devices) {
+                DeviceCard(
+                    device = it,
+                    state = "not connected",
+                ) {
+
+                }
+            }
         }
     } else {
         Row(
@@ -132,7 +139,11 @@ fun DeviceList(devices: List<Device>) {
 
 
 @Composable
-fun DeviceCard(device: Device) {
+fun DeviceCard(
+    device: Device,
+    state: String,
+    onConnectDevice: () -> Unit
+) {
     Row(
         Modifier
             .padding(4.dp)
@@ -142,8 +153,8 @@ fun DeviceCard(device: Device) {
     ) {
         Text(text = device.name, Modifier.weight(1F))
         Column {
-            Text(text = "Not connected")
-            Button(onClick = { /*TODO*/ }) {
+            Text(text = state)
+            Button(onClick = onConnectDevice) {
                 Text(text = "Connect")
             }
         }
