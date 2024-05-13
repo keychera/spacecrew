@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalPermissionsApi::class, ExperimentalPermissionsApi::class)
+@file:OptIn(ExperimentalPermissionsApi::class)
 
 package self.chera.spacecrew
 
@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,11 +22,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,10 +37,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -106,7 +104,16 @@ fun FeatureThatUseBluetooth(activity: ComponentActivity) {
             Modifier.padding(start = 16.dp, end = 16.dp)
         ) {
             BluetoothMainScreen(activity, btDeviceListViewModel)
-            DeviceListScreen(btDeviceListViewModel)
+            if (ActivityCompat.checkSelfPermission(
+                    activity,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                Text(text = "Bluetooth connect permission not granted")
+            } else {
+                DeviceListScreen(btDeviceListViewModel)
+            }
+
         }
 
     } else {
@@ -173,36 +180,6 @@ fun AskForBluetooth(
 }
 
 
-@Composable
-fun DeviceCard(device: BluetoothDevice) {
-    Row(
-        Modifier
-            .padding(4.dp)
-            .shadow(2.dp)
-            .padding(16.dp)
-            .fillMaxWidth(0.8F)
-    ) {
-        Text(text = device.address)
-    }
-}
-
-@Composable
-fun DeviceList(devices: List<BluetoothDevice>) {
-    if (devices.isNotEmpty()) {
-        LazyColumn {
-            items(devices) { DeviceCard(device = it) }
-        }
-    } else {
-        Row(
-            Modifier
-                .padding(4.dp)
-                .shadow(2.dp)
-                .padding(16.dp)
-        ) {
-            Text("No device found")
-        }
-    }
-}
 
 @RequiresApi(Build.VERSION_CODES.S)
 @Preview(showBackground = true)
