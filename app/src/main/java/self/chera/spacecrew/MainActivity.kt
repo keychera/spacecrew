@@ -17,6 +17,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,7 +49,11 @@ import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import self.chera.spacecrew.ui.theme.SpacecrewTheme
 
+lateinit var acceptThread : AcceptThread
+
 class MainActivity : ComponentActivity() {
+
+
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,7 +108,6 @@ fun FeatureThatUseBluetooth(activity: ComponentActivity) {
         Column(
             Modifier.padding(start = 16.dp, end = 16.dp)
         ) {
-            BluetoothMainScreen(activity, btDeviceListViewModel)
             if (ActivityCompat.checkSelfPermission(
                     activity,
                     Manifest.permission.BLUETOOTH_CONNECT
@@ -111,6 +115,7 @@ fun FeatureThatUseBluetooth(activity: ComponentActivity) {
             ) {
                 Text(text = "Bluetooth connect permission not granted")
             } else {
+                BluetoothMainScreen(activity, btDeviceListViewModel)
                 DeviceListScreen(btDeviceListViewModel)
             }
 
@@ -122,12 +127,14 @@ fun FeatureThatUseBluetooth(activity: ComponentActivity) {
 }
 
 @Composable
+@RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
 fun BluetoothMainScreen(
     activity: ComponentActivity,
     btDeviceListViewModel: BluetoothDeviceListViewModel
 ) {
     val manager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     val bluetooth = manager.adapter
+    acceptThread = createAcceptThread(bluetooth)
 
     var isON by remember { mutableStateOf(bluetooth.isEnabled) }
 

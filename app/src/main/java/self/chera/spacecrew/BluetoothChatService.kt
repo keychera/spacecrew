@@ -1,49 +1,50 @@
 package self.chera.spacecrew
 
 import android.Manifest
-import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothServerSocket
-import android.content.Context
-import androidx.activity.ComponentActivity
+import android.bluetooth.BluetoothSocket
+import android.content.ContentValues.TAG
+import android.util.Log
 import androidx.annotation.RequiresPermission
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
+import java.io.IOException
 import java.util.UUID
-import kotlin.time.Duration.Companion.seconds
 
-private const val NAME_INSECURE = "BluetoothChatInsecure"
-private val MY_UUID_INSECURE = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
-
-data class AcceptCoroutine(
-    val cancel: () -> Unit,
-) {
-    var open: Boolean = false
-}
+private const val NAME = "BluetoothChat"
+private val MY_UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
 
 @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-suspend fun acceptCoroutine(
-    activity: ComponentActivity,
-    onUpdate: (Int) -> Unit
-): AcceptCoroutine {
-    val manager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    val bluetooth = manager.adapter
-    val mmServerSocket: BluetoothServerSocket =
-        bluetooth.listenUsingInsecureRfcommWithServiceRecord(NAME_INSECURE, MY_UUID_INSECURE)
-    val acceptCoroutine = AcceptCoroutine { mmServerSocket.close() }
-    coroutineScope {
-        launch {
-            withTimeout(8.seconds) {
-                var i = 0
-                while (acceptCoroutine.open) {
-                    delay(1000)
-                    i += 1
-                    onUpdate(i)
-                }
+fun createAcceptThread(bluetoothAdapter: BluetoothAdapter): AcceptThread {
+    val mmServerSocket: BluetoothServerSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(NAME, MY_UUID)
+    return AcceptThread(mmServerSocket);
+}
+
+class AcceptThread(private val mmServerSocket: BluetoothServerSocket) : Thread() {
+    override fun run() {
+        // Keep listening until exception occurs or a socket is returned.
+        var shouldLoop = true
+        while (shouldLoop) {
+            val socket: BluetoothSocket? = try {
+                mmServerSocket.accept()
+            } catch (e: IOException) {
+                Log.e(TAG, "Socket's accept() method failed", e)
+                shouldLoop = false
+                null
             }
-            mmServerSocket.close()
+            socket?.also {
+//                manageMyConnectedSocket(it)
+                mmServerSocket.close()
+                shouldLoop = false
+            }
         }
     }
-    return acceptCoroutine
+
+    // Closes the connect socket and causes the thread to finish.
+    fun cancel() {
+        try {
+            mmServerSocket.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "Could not close the connect socket", e)
+        }
+    }
 }
